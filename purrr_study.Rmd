@@ -1,0 +1,87 @@
+---
+title: "purrr包学习笔记"
+author: "haoyi.li"
+date: "2018年7月5日"
+output: 
+  html_document: 
+    highlight: monochrome
+    number_sections: yes
+    theme: cerulean
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, highlight=TRUE, tidy=TRUE, eval=TRUE, warning=FALSE, message=FALSE)
+# Sys.setlocale(locale="C")
+Sys.setlocale(category = "LC_ALL",locale = "Chinese (Simplified)_People's Republic of China.936")
+library(purrr)
+```
+
+# accumulate
+- accumulate(.x, .f, ..., .init)
+- accumulate_right(.x, .f, ..., .init)
+
+## 函数源代码
+```{r}
+accumulate
+accumulate_right
+```
+
+
+## 参数说明
+- `.x`：列表或向量
+- `.f`：应用的函数
+- `...`：函数`.f`的参数
+- `.init`：如设置，将作为累计向量或列表的第一个元素，否则就是用`x[[1]]`,当`.x`为空时，常用的设置
+
+```{r cars}
+1:3 %>% accumulate(.f=`+`,.init=2) #计算向量累计和，从左到右
+1:3 %>% accumulate_right(`*`) #计算向量的累计积，从右到左
+c(1,1,1) %>% accumulate(.f=`+`,.init=1)
+c(NULL,1,1) %>% accumulate(.f=`+`,.init=1)
+1:10 %>% accumulate(max, .init = 5)
+1:10 %>% accumulate(~ .x)
+1:10 %>% accumulate(~ .y)
+
+library(dplyr)
+library(ggplot2)
+
+data <- rerun(5, rnorm(100)) %>%
+  set_names(paste0("sim", 1:5)) %>%
+  map(~ accumulate(., ~ .05 + .x + .y)) %>%
+  map_dfr(~ data_frame(value = .x, step = 1:100), .id = "simulation") %>%
+  ggplot(aes(x = step, y = value)) +
+    geom_line(aes(color = simulation)) +
+    ggtitle("Simulations of a random walk with drift")
+
+```
+
+# 将array转换成list
+- array_branch(array, margin = NULL)
+- array_tree(array, margin = NULL)
+
+## 参数说明
+- array：需转换的数组
+- margin：
+
+## 源代码
+```{r}
+array_branch
+array_tree
+```
+
+示例
+```{r}
+x <- array(1:12, c(2, 2, 3))
+array_branch(x) %>% str() #转换成一个length(x)的列表
+
+array_branch(x, 1) %>% str()
+array_branch(x, 2) %>% str()
+array_branch(x, 3) %>% str()
+array_branch(x, c(1, 3)) %>% str()
+array_tree(x) %>% str()
+array_tree(x, c(3, 1)) %>% str()
+
+```
+
+

@@ -1,0 +1,641 @@
+---
+title: "TSdist2"
+author: "haoyi.li"
+date: "2018年11月15日"
+output:
+  html_document:
+    df_print: kable
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+Sys.getlocale()
+Sys.setlocale(locale="C") # 解决input string 1 is invalid in this locale的问题
+knitr::opts_chunk$set(echo = TRUE)
+library(TSdist)
+```
+
+# LBKeoghDistance
+LB_Keogh for DTW
+
+## 描述
+Computes the Keogh lower bound for the Dynamic Time Warping distance between a pair of numeric time series.
+计算一对数值时间序列之间的动态时间规整距离的Keogh下界。
+
+## 用法
+```
+LBKeoghDistance(x, y, window.size)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+window.size：窗口大小
+```
+
+## 示例
+```{r}
+# The objects example.series1 and example.series2 are two
+# numeric series of length 100 contained in the TSdist package.
+data(example.series1)
+data(example.series2)
+
+# Calculate the LB_Keogh distance measure for these two series
+# with a window of band of width 11:
+LBKeoghDistance(example.series1, example.series2, window.size=11)
+```
+
+# LCSSDistance 
+Longest Common Subsequence distance for Real Sequences.
+实序列的最长公共子序列距离
+
+## 描述
+Computes the Longest Common Subsequence distance between a pair of numeric time series.
+计算两个数值时间序列之间最长的公共子序列距离。
+
+## 用法
+```
+LCSSDistance(x, y, epsilon, sigma)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+epsilon：一个定义距离的正阈值
+sigma：必要时，可以通过指定一个正整数来添加sako-chiba窗口大小
+```
+
+## 示例
+```{r}
+# The objects example.series3 and example.series4 are two
+# numeric series of length 100 and 120 contained in the TSdist
+# package.
+data(example.series3)
+data(example.series4)
+
+# Calculate the LCSS distance for two series of different length
+# with no windowing constraint:
+LCSSDistance(example.series3, example.series4, epsilon=0.1)
+
+# Calculate the LCSS distance for two series of different length
+# with a window of size 30:
+LCSSDistance(example.series3, example.series4, epsilon=0.1, sigma=30)
+```
+
+
+# LPDistance 
+Lp distances.
+
+## 描述
+Computes the distance based on the chosen Lp norm between a pair of numeric vectors.
+根据选定的Lp范数计算一对数值向量之间的距离
+
+## 用法
+```
+LPDistance(x, y, method="euclidean", ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+method：取值 "euclidean", "manhattan", "infnorm", "minkowski".
+...：如果method="minkowski"，必须为p指定一个正整数.
+```
+
+## 示例
+```{r}
+# Compute the different Lp distances 
+#Euclidean distance欧几里得距离
+LPDistance(example.series1, example.series2, method="euclidean")
+
+# Manhattan distance 曼哈顿距离
+LPDistance(example.series1, example.series2, method="manhattan")
+
+# Infinite norm distance无限范数距离
+LPDistance(example.series1, example.series2, method="infnorm")
+
+# Minkowski distance with p=3. 闵可夫距离
+LPDistance(example.series1, example.series2, method="minkowski", p=3)
+```
+
+
+# ManhattanDistance 
+Manhattan distance.曼哈顿距离
+
+## 描述
+Computes the Manhattan distance between a pair of numeric vectors.
+计算两个数值向量之间的曼哈顿距离
+
+## 用法
+```
+ManhattanDistance(x, y)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+```
+
+## 示例
+```{r}
+# Compute the Manhattan distance between them:
+ManhattanDistance(example.series1, example.series2)
+```
+
+
+# MindistSaxDistance
+Symbolic Aggregate Aproximation based dissimilarity
+基于符号聚合近似的差异性
+
+## 描述
+Calculates the dissimilarity between two numerical series based on the distance between their SAX representations.
+基于符号聚合近似距离，计算两个数值时间序列的差异性
+
+## 用法
+```
+MindistSaxDistance(x, y, w, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+w：The amount of equal sized windows that the series will be reduced to.
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the mindist.sax distance between the two series using
+# 20 equal sized windows for each series. The rest of the parameters
+# are left in their default mode.
+MindistSaxDistance(example.series3, example.series4, w=20)
+```
+
+
+# MinkowskiDistance 
+Minkowski distance.
+
+## 描述
+Computes the Minkowski distance between two numeric vectors for a given p.
+
+## 用法
+```
+MinkowskiDistance(x, y, p)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+p：A strictly positive integer value that defines the chosen L p norm.
+```
+
+## 示例
+```{r}
+# Compute the Minkowski distance between them:
+MinkowskiDistance(example.series1, example.series2, p=3)
+```
+
+
+# NCDDistance 
+Normalized Compression based distance
+基于归一化压缩的距离
+
+## 描述
+Calculates a normalized distance between two numerical series based on their compressed sizes.
+根据压缩大小计算两个数值序列之间的归一化距离。
+
+## 用法
+```
+NCDDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the normalized compression based distance between the two series
+# using default parameter.
+NCDDistance(example.series3, example.series4)
+```
+
+
+# OneNN 
+1NN classification for a pair of train/test time series datasets.
+1NN分类器，用于一对训练/测试时间序列数据集
+
+## 描述
+Given a specific distance measure, this function provides the 1NN classification values and the associated error for a specific train/test pair of time series databases.
+
+## 用法
+```
+OneNN(train, trainc, test, testc, distance, ...)
+```
+
+## 参数说明
+```
+train：作为训练集的时间序列数据集，如一个数值matrix, list, mts对象, zoo对象，xts对象。
+trainc：表示训练集中每一个系列类别的数值向量。
+test：作为测试集的时间序列数据集，如一个数值matrix, list, mts对象,
+testc：表示测试集中每一个系列类别的数值向量。
+distance：使用地距离度量， 取值其中之一: "euclidean", "manhattan",
+"minkowski", "infnorm", "ccor", "sts", "dtw", "keogh_lb", "edr", "erp", "lcss", "fourier", "tquest", "dissimfull", "dissimapprox", "acf", "pacf", "ar.lpc.ceps", "ar.mah", "ar.mah.statistic", "ar.mah.pvalue", "ar.pic", "cdm", "cid", "cor", "cort", "wav", "int.per", "per", "mindist.sax", "ncd", "pred", "spec.glk", "spec.isd", "spec.llr", "pdc", "frechet")
+...：所选择的距离函数的其他附加参数
+```
+
+## 示例
+```{r}
+# 加载数据集
+data(example.database2)
+str(example.database2)
+# example.database2$data 是一个数值矩阵，每一行表示一个序列
+# example.database2$classes 是一个数值向量，每个序列的分类
+# Create train/test by dividing the dataset 70%-30%
+# 将数据集分为训练集和测试集，序列数分别占70%和30%
+set.seed(100) # 设置随机种子
+trainindex <- sample(1:100, 70, replace=FALSE) # 使用随机函数产生训练集的索引
+train <- example.database2[[1]][trainindex, ] # 提取训练集
+test <- example.database2[[1]][-trainindex, ] # 提取测试集
+trainclass <- example.database2[[2]][trainindex] # 训练集分类类别
+testclass <- example.database2[[2]][-trainindex] # 测试集分类类别
+
+# 基于不同的距离度量使用1NN分类器进行分类
+OneNN(train, trainclass, test, testclass, "euclidean")
+OneNN(train, trainclass, test, testclass, "pdc")
+obj <- OneNN(train = train, trainc = trainclass, test = test, testc = testclass, distance =  "dtw")
+OneNN(train = train, trainc = trainclass, test = test, testc = testclass, distance =  "fourier")
+```
+
+
+# PACFDistance
+Partial Autocorrelation-based Dissimilarity
+基于偏自相关的差异性
+
+## 描述
+Computes the dissimilarity between a pair of numeric time series based on their estimated partial autocorrelation coefficients.
+基于估计的偏自相关系数，计算一对数值时间序列的差异性
+
+## 用法
+```
+PACFDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the autocorrelation based distance between the two series using
+# the default parameters:
+PACFDistance(example.series3, example.series4)
+```
+
+
+# PDCDistance
+Permutation Distribution Distance
+置换分布距离
+
+## 描述
+Calculates the permutation distribution distance between two numerical series of the same length.
+计算两个等长的数值序列之间的置换分布距离
+
+## 用法
+```
+PDCDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the normalized compression based distance between the two series
+# using the default parameters.
+PDCDistance(example.series1, example.series2)
+```
+
+
+# PerDistance 
+Periodogram based dissimilarity
+基于周期图的差异性
+
+## 描述
+基于周期图，计算一对等长数值时间序列的差异性
+
+## 用法
+```
+PerDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the ar.mah distance between the two series using
+# the default parameters.
+PerDistance(example.series1, example.series2)
+```
+
+
+# PredDistance 
+
+Dissimilarity Measure Based on Nonparametric Forecasts  
+基于非参数预测的差异测度
+
+## 描述
+The dissimilarity of two numerical series of the same length is calculated based on the L1 distance between the kernel estimators of their forecast densities at a given time horizon.  
+在给定时间范围，根据预测密度的核估计量的L1距离，计算两个相同长度的数值序列的差异
+
+## 用法
+```
+PredDistance(x, y, h, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+h：Integer value representing the prediction horizon.
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the prediction based distance between the two series using
+# the default parameters.
+PredDistance(example.series1, example.series2)
+```
+
+
+# SpecGLKDistance 
+Dissimilarity based on the Generalized Likelihood Ratio Test  
+基于广义似然比检验的差异
+
+## 描述
+The dissimilarity of two numerical series of the same length is calculated based on an adaptation of the generalized likelihood ratio test.  
+基于自适应的广义似然比检验，计算两个等长数值序列的差异性。
+
+## 用法
+```
+SpecGLKDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the ar.mah distance between the two series using
+# the default parameters.
+SpecGLKDistance(example.series1, example.series2)
+```
+
+
+# SpecISDDistance  对数倒谱距离
+Dissimilarity Based on the Integrated Squared Difference between the Log-Spectra
+基于对数倒谱的积分平方差的差异性
+
+
+## 描述
+The dissimilarity of two numerical series of the same length is calculated based on the integrated squared difference between the non-parametric estimators of their log-spectra.  
+基于对数倒谱的非参数估计的积分平方差，计算两个等长数值时间序列差异性
+
+## 用法
+```
+SpecISDDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the spec.isd distance between the two series using
+# the default parameters.
+SpecISDDistance(example.series1, example.series2)
+```
+
+
+# SpecLLRDistance 
+General Spectral Dissimilarity Measure Using Local-Linear Estimation of the Log-Spectra  
+基于对数倒谱的局部线性估计的通用谱差异性度量
+
+## 描述
+The dissimilarity of two numerical series of the same length is calculated based on the ratio between local linear estimations of the log-spectras.
+基于对数谱局部线性估计的比值，计算两个相同长度的数值序列的差异性
+
+## 用法
+```
+SpecLLRDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the spec.isd distance between the two series using
+# the default parameters.
+SpecLLRDistance(example.series1, example.series2)
+```
+
+
+# STSDistance 
+Short time series distance (STS).  
+短时序列距离
+
+## 描述
+Computes the Short Time Series Distance between a pair of numeric time series.  
+计算一对数值序列的短时序距离
+
+## 用法
+```
+STSDistance(x, y, tx, ty)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+tx：If not constant, a numeric vector that specifies the sampling index of series x.
+ty：If not constant, a numeric vector that specifies the sampling index of series y.
+```
+
+## 示例
+```{r}
+# Calculate the STS distance assuming even sampling:
+STSDistance(example.series1, example.series2)
+# Calculate the STS distance providing an uneven sampling:
+tx<-unique(c(seq(2, 175, 2), seq(7, 175, 7)))
+tx <- tx[order(tx)]
+ty <- tx
+STSDistance(example.series1, example.series2, tx, ty)
+```
+
+# TquestDistance 
+Tquest distance.  
+任务距离
+
+## 描述
+Computes the Tquest distance between a pair of numeric vectors.  
+计算一对数值向量之间的tquest距离
+
+## 用法
+```
+TquestDistance(x, y, tx, ty, tau)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+tx：If not constant, a numeric vector that specifies the sampling index of series x. 如果不是常数，则表示指定系列x的抽样索引的数字向量。
+ty：If not constant, a numeric vector that specifies the sampling index of series y. 如果不是常数，则表示指定系列y的抽样索引的数字向量。
+tau：Parameter (threshold) used to define the threshold passing intervals. 指定间隔的阈值
+```
+
+## 示例
+```{r}
+# Calculate the Tquest distance assuming even sampling:
+TquestDistance(example.series1, example.series2, tau=2.5)
+
+# Calculate the Tquest distance for two series of different length:
+TquestDistance(example.series3, example.series4, tau=2.5)
+```
+
+# TSDatabaseDistances 
+TSdist distance matrix computation.  
+Tdist距离矩阵计算
+
+## 描述
+TSdist distance matrix computation for time series databases.  
+时间序列数据库的TS距离矩阵计算。
+
+## 用法
+```
+TSDatabaseDistances(X, Y=NULL, distance, ...)
+```
+
+## 参数说明
+```
+X：时间序列数据库，可为一个数值矩阵，list，mts对象，zoo或者xts对象。
+Y：时间序列数据库，可为一个数值矩阵，list，mts对象，zoo或者xts对象。 只为计算两个不同数据库之间的距离矩阵而定义，因此默认值为NULL。
+distance：距离度量，取值其中之一: "euclidean", "manhattan", "minkowski", "infnorm", "ccor", "sts", "dtw", "keogh.lb", "edr", "erp", "lcss", "fourier", "tquest", "dissim", "acf", "pacf", "ar.lpc.ceps", "ar.mah", "ar.mah.statistic", "ar.mah.pvalue", "ar.pic", "cdm", "cid", "cor", "cort", "wav", "int.per", "per", "mindist.sax", "ncd", "pred", "spec.glk", "spec.isd", "spec.llr", "pdc", "frechet"
+...：所选择的的距离函数的附加参数
+```
+
+## 示例
+```{r}
+data(example.database)
+# To calculate the distance matrix of this database:
+TSDatabaseDistances(example.database, distance="manhattan")
+TSDatabaseDistances(example.database, distance="edr", epsilon=0.2)
+TSDatabaseDistances(example.database, distance="fourier", n=20)
+# The object zoo.database is a zoo object that saves
+# the same 6 ARIMA time series saved in example.database.
+data(zoo.database)
+# To calculate the distance matrix of this database:
+TSDatabaseDistances(zoo.database, distance="manhattan")
+TSDatabaseDistances(zoo.database, distance="edr", epsilon=0.2)
+TSDatabaseDistances(zoo.database, distance="fourier", n=20)
+```
+
+# TSDistances 
+Tdist距离计算
+
+## 描述
+两个时间序列间的TIST距离计算。
+
+## 用法
+```
+TSDistances(x, y, tx, ty, distance, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+tx：如果不是常数，则表示指定系列x的抽样索引的数字向量。
+ty：如果不是常数，则表示指定系列y的抽样索引的数字向量。.
+distance：距离函数. 取值其中之一: "euclidean", "manhattan", "minkowski", "infnorm", "ccor", "sts", "dtw", "keogh.lb", "edr", "erp", "lcss", "fourier", "tquest", "dissim", "acf", "pacf", "ar.lpc.ceps", "ar.mah", "ar.mah.statistic", "ar.mah.pvalue", "ar.pic", "cdm", "cid", "cor", "cort", "wav", "int.per", "per", "mindist.sax", "ncd", "pred", "spec.glk", "spec.isd", "spec.llr", "pdc", "frechet"
+...：距离函数的附加参数
+```
+
+## 示例
+```{r}
+# The objects zoo.series1 and zoo.series2 are two
+# zoo objects that save two series of length 100.
+data(zoo.series1)
+data(zoo.series2)
+# For information on their generation and shape see
+# help page of example.series.
+# help(example.series)
+# The distance calculation for these two series is done
+# as follows:
+TSDistances(zoo.series1, zoo.series2, distance="infnorm")
+TSDistances(zoo.series1, zoo.series2, distance="cor", beta=3)
+TSDistances(zoo.series1, zoo.series2, distance="dtw", sigma=20)
+```
+
+# WavDistance  
+Dissimilarity for Time Series Based on Wavelet Feature Extraction  
+基于小波特征提取的时间序列差异性
+
+## 描述
+Provides the dissimilarity between two numerical series of the same length by calculating the Euclidean distance between the wavelet coefficients obtained from an orthogonal wavelet transform of the series.  
+通过计算由正交小波变换得到的小波系数之间的欧几里德距离，给出两个等长数值序列之间的差异性。
+
+## 用法 
+```
+WavDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：附加参数
+```
+
+## 示例
+```{r}
+# Calculate the distance based on wavelet feature extraction between the series.
+WavDistance(example.series1, example.series2)
+```

@@ -1,0 +1,477 @@
+---
+title: "The Great Time Series Classification Bake Off"
+author: "haoyi.li"
+date: "2018.12.6"
+output:
+  word_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+---
+
+
+**ABSTRACT**
+
+In the last five years there have been a large number of new time series classification algorithms proposed in the literature. These algorithms have been evaluated on subsets of the 47 data sets in the University of California, Riverside time series classification archive. The archive has recently been expanded to 85 data sets, over half of which have been donated by researchers at the University of East Anglia. Aspects of previous evaluations have made comparisons between algorithms difficult. For example, several different programming languages have been used, experiments involved a single train/test split and some used normalised data whilst others did not. The relaunch of the archive provides a timely opportunity to thoroughly evaluate algorithms on a larger number of datasets. We have implemented 18 recently proposed algorithms in a common Java framework and compared them against two standard benchmark classifiers (and each other) by performing 100 resampling experiments on each of the 85 datasets. We use these results to test several hypotheses relating to whether the algorithms are significantly more accurate than the benchmarks and each other. Our results indicate that only 9 of these algorithms are significantly more accurate than both benchmarks and that one classifier, the Collective of Transformation Ensembles, is significantly more accurate than all of the others. All of our experiments and results are reproducible: we release all of our code, results and experimental details and we hope these experiments form the basis for more rigorous testing of new algorithms in the future.  
+
+# INTRODUCTION
+
+Time series classification (TSC) problems are differentiated from traditional classification problems because the attributes are ordered. Whether the ordering is by time or not is in fact irrelevant. The important characteristic is that there may be discriminatory features dependent on the ordering. The introduction of the UCR time series classification and clustering repository [21] saw a rapid growth in the number of publications proposing time series classification algorithms. Prior to the summer of 2015 over 1,200 people have downloaded the UCR archive and it has been referenced several hundred times. The repository has contributed to increasing the quality of evaluation of new TSC algorithms. Most experiments involve evaluation on over forty data sets, often with correct significance testing and most authors release source code. This degree of evaluation and reproducibility is generally better than most areas of machine learning and data mining research.  
+
+However, there are still some fundamental problems with published TSC research that we aim to address. Firstly, nearly all evaluations are performed on a single train/test split. This can lead to over interpreting of results. The majority of machine learning research involves repeated resamples of the data, and we think TSC researchers should follow suit. To illustrate why, consider the following anecdote. We were recently contacted by a researcher who queried our published results for one nearest neighbour (1-NN) dynamic time warping (DTW) on the UCR train test splits. When comparing our accuracy results to theirs, they noticed that in some instances they differed by as much as 6%. Over all the problems there was no significant difference, but clearly we were concerned, as it is a deterministic algorithm. On further investigation, we found out that our data were rounded to six decimal places, there＊s to eight. These differences on single splits were caused by small data set sizes and tiny numerical differences. When resampling, there were no significant difference on individual problems when using 6 or 8 decimal places.   
+
+Secondly, there are some anomalies and discrepancies in the UCR data that can bias results. Not all of the data are normalised (e.g. Coffee) and some have been normalised incorrectly (e.g. ECG200). This can make algorithms look better than they really are. For example, most authors cite an error of 17.9% for the Coffee data with 1-NN DTW, and most algorithms easily achieve lower error. However, 17.9% error is for DTW on the non-normalised data. If it is normalised, 1-NN DTW has 0% error, a somewhat harder benchmark to beat. ECG200 has been incorrectly formatted so that the sum of squares of the series can classify the data perfectly. If a classifier uses this feature it should be completely accurate. This will be a further source of bias. 
+
+Thirdly, the more frequently a fixed set of problems is used, the greater the danger of overfitting and detecting significant improvement that does not generalise to new problems. We should be constantly seeking new problems and enhancing the repository with new data. This is the only real route to detecting genuine improvement in classifier performance. 
+
+Finally, whilst the release of source code is admirable, the fact there is no common framework means it is often very hard to actually use other peoples code. We have reviewed algorithms written in C, C++, Java, Matlab, R and python. Often the code is※research grade§, i.e. designed to achieve the task with little thought to reusability or comprehensibility. There is also the tendency to not provide code that performs model selection, which can lead to suspicions that parameters were selected to minimize test error, thus biasing the results.
+
+To address these problems we have implemented 20 different TSC algorithms in Java, integrated with the WEKA toolkit [17]. We have applied the following guidelines for the inclusion of an algorithm. Firstly, the algorithm must have been recently published in a high impact conference or journal. Secondly, it must have been evaluated on some subset of the UCR data. Thirdly, source code must be available. Finally, it must be feasible/within our ability to implement the algorithm in Java. This last criteria lead us to exclude at least two good candidates, described in Section 2.7. Often, variants of a classifier are described within the same publication. We have limited each paper to one algorithm and taken the version we consider most representative of the key idea behind the approach. 
+
+We have conducted experiments with these algorithms and standard WEKA classifiers on 100 resamples of every data set (each of which is normalised), including the 40 new data sets we have introduced into the archive. In addition to resampling the data sets, we have also conducted extensive model selection for many of the classifiers. Full details of our experimental regime are given in Section 3. 
+
+This is one of the largest ever experimental studies conducted in machine learning. We have performed millions of experiments distributed over thousands of nodes of a large high performance computing facility. Nevertheless, the goal of the study is tightly focussed and limited. This is meant to act as a springboard for further investigation into a wide range of TSC problems we do not address. Specifically, we assume all series in a problem are equal length, real valued and have no missing values. Classification is offline, and we assume the cases are independent (i.e. we do not per-form streaming classification). All series are labelled and all problems involve learning the labels of univariate time series. We are interested in testing hypotheses about the average accuracy of classifiers over a large set of problems. Algorithm efficiency and scalability are of secondary interest at this point. Detecting whether a classifier is on average more accurate than another is only part of the story. Ideally, we would like to know a priori which classifier is better for a class of problem or even be able to detect which is best for a specific data set. However, this is beyond the scope of this project.
+
+Our findings are surprising, and a little embarrassing, for two reasons. Firstly, many of the algorithms are in fact no better than our two benchmark classifiers, 1-NN DTW and Rotation Forest. Secondly, of those 8 significantly better than both benchmarks, by far the best classifier is COTE [2], an algorithm we proposed. It is on average over 8% more accu- rate than either benchmark. Whilst gratifying for us, we fear that this outcome may cause some to question the validity of the study. We have made every effort to faithfully reproduce all algorithms. We have tried to reproduce published results, with varying degrees of success (as described below), and have consulted authors on the implementation where possible. Our results are reproducable, and we welcome all input on improving the code base. We must stress that COTE is by no means the final solution. All of the algorithms we describe may have utility in specific domains, and many are orders of magnitudes faster than COTE. Nevertheless, we believe that it is the responsibility of the designers of an algorithm to demonstrate its worth. We think our benchmarking results will help facilitate an improved understanding of utility of new algorithms under alternative scenarios. 
+
+All of the code is freely accessible from a repository [7] and detailed results and data sets are available from a dedicated website [1]. 
+
+The rest of this paper is structured as follows. In Section 2 we review the algorithms we have implemented. In Section 3 we describe the data, code structure and experimental design. In Section 4 we present and analyse the results, and in Section 5 we summarise our findings and discuss the future direction.
+
+# CLASSIFICATION ALGORITHMS
+
+We denote a vector in bold and a matrix in capital bold. A case/instance is a pair $\{x,y\}$ with $m$ observations $x_1 , ... ,x_m$(the time series) and discrete class variable y with c possible values. A list of n cases with associated class labels is $T = < X,y > = < ( x_1 ,y_1 ), ... ,( x_n ,y_n ) >$. A classifier is a function or mapping from the space of possible inputs to a probability distribution over the class variable values.
+
+The large majority of time series research in the field of data mining has concentrated on alternative distance measures that can be used for clustering, query and classification. For TSC, these distance measures are almost exculsively evaluated using with a one nearest neighbour (1-NN) classifier. The standard benchmark distance measures are Euclidean distance (ED) and dynamic time warping (DTW). Alternative techniques taken from other fields include edit distance with real penalty (ERP) and longest common subsequence (LCSS). Three more recently proposed time domain distance measures are described in Section 2.1.
+
+DTW is by far the most popular benchmark. Suppose we want to measure the distance between two series, $a = \{a_1 ,a_2 , ... ,a_m \}$ and $b = \{b_1 ,b_2 , ... ,b_m \}$. Let$ M(a,b)$ be the $m ℅ m$ pointwise distance matrix between **a** and **b**, where $M_{i, j} = \left ( a_i - b_j \right )^2$. A warping path
+$$
+P = <(e_1,f_1), (e_2, f_2),..., (e_s,f_s)> 
+$$
+is a set of points (i.e. pairs of indexes) that define a traversal of matrix *M*. So, for example, the Euclidean distance $d_E(a,b)=\sum_{i-1}^m(a_i - b_i)^2$ is the path along the diagonal of *M*.
+
+A valid warping path must satisfy the conditions 
+$(e_1 ,f_1 ) = (1,1)$ and $(e_s ,f_s ) = (m,m)$ and that $0\leqslant e_{i+1}-e_i\leqslant 1$ and $0\leqslant f_{i+1}-f_i\leqslant 1$ for all $i < m$. The DTW distance between series is the path through M that minimizes the total distance, subject to constraints on the amount of warping allowed.
+
+Let $p_i = M_{a_{e_\textit{i}},b_{f_\textit{i}}}$ be the distance between elements at position $e_i$ of *a* and at position $f_i$ of *b* for the $i_{th}$ pair of points in a proposed warping path **P**. The distance for any path **P** is
+$$
+D_P(a,b)=\sum_{i=1}^sp_i
+$$
+If $\mathbb{P}$ is the space of all possible paths, the DTW path $P^*$ is the path that has the minimum distance, i.e.
+$$
+P^* = \min_{P \in \mathbb{P}}(D_P(a,b))
+$$
+The optimal path $P^*$ can be found exactly through a dynamic programming formulation. This can be a time consuming operation, and it is common to put a restriction on the amount of warping allowed. This restriction is equivalent to putting a maximum allowable distance between any pairs of indexes in a proposed path. If the warping window, r, is the proportion of warping allowed, then the optimal path is constrained so that
+$$
+\left | e_i - f_i \right | \leqslant r \cdot m \qquad     \forall(e_i,f_i)\in P^*
+$$
+
+It has been shown that setting r through cross validation to maximize training accuracy, as proposed in [28], significantly increases accuracy [24].
+
+## Time Domain Distance Based Classifiers
+Numerous alternatives to DTW have been proposed. In 2008, Ding et al. [12] evaluated 8 different distance measures on 38 data sets and found none significantly better than DTW. Since then, three more elastic measures have been proposed. 
+
+### Weighted DTW (WDTW) [19] 
+Jeong et al. describe WDTW [19], which adds a multiplicative weight penalty based on the warping distance between points in the warping path. It favours reduced warping, and is a smooth alternative to the cutoff point approach of using a warping window. When creating the distance matrix M, a weight penalty $w_{|i - j|}$ for a warping distance of $|i-j|$ is applied, so that
+$$
+M_{i,j} = w_{|i-j|}(a_i - b_j)^2
+$$
+A logistic weight function is used, so that a warping of a places imposes a weighting of 
+$$
+w(a,b) = \frac{w_{\max}}{1 + e^{-g \cdot(a - m/2)}}
+$$
+where $w_{\max}$ is an upper bound on the weight (set to 1), *m* is the series length and *g* is a parameter that controls the penalty level for large warpings. The larger *g* is, the greater the penalty for warping.
+
+### Time Warp Edit (TWE) [25]
+Marteau propose the TWE distance [25], an elastic distance metric that includes characteristics from both LCSS and DTW. It allows warping in the time axis and combines the edit distance with Lp-norms. The warping is controlled by a stiffness parameter, *糸*. Stiffness enforces a multiplicative penalty on the distance between matched points in a manner similar to WDTW. A penalty value *竹* is applied when sequences do not match.
+
+![](C:\Users\Administrator\Pictures\A1.PNG)
+
+### Move-Split-Merge (MSM) [32]
+Stefan et al. [32] present MSM distance (Algorithm 2), a metric that is conceptually similar to other edit distance-based approaches, where similarity is calculated by using a set of operations to transform a given series into a target series. Move is synonymous with a substitute operation, where one value is replaced by another. Split and merge differ from other approaches, as they attempt to add context to insertions and deletions. The split operation inserts an identical copy of a value immediately after itself, and the merge operation is used to delete a value if it directly follows an identical value.
+
+![](C:\Users\Administrator\Pictures\A2.PNG)
+
+$$
+C(a_i,a_{i-1},b_j) = \left\{\begin{matrix}
+c &,if \quad a_{i-1} \leqslant a_i \leqslant b_j \quad or \quad a_{i-1}\geqslant a_i\geqslant b_j\\ 
+c+min(|a_i-a_{i-1}|,|a_i-b_j|) & ,otherwise 
+\end{matrix}\right.
+$$
+
+We have implemented WDTW, TWE, MSM and other commonly used time domain distance measures, which are available in the package weka.core.elastic distance measures. We have generated results that are not significantly different to those published when using these distances with 1-NN. In [24] it was shown that there is no significant difference between 1-NN with DTW and with WDTW, TWE or MSM on a set of 72 problems using a single train test split. In Section 4 we revisit this result with more data and resamples rather than a train/test split.
+
+## Differential Distance Based Classifiers
+There are a group of algorithms that are based on the first order differences of the series,
+$${a}'_i = a_i - a_{i+1},\quad i=1,...,m-1$$
+which we refer to as *diff*. Various methods that have used just the differences have been described [19], but the most successful approaches combine distance in the time domain and the difference domain.
+
+### Complexity Invariant distance (CID)
+Batista et al. [3] describe a means of weighting a distance measure to compensate for differences in the complexity in the two series being compared. Any measure of complexity can be used, but Batista et al. recommend the simple expedient of using the sum of squares of the first differences (see Algorithm 3).
+
+![](C:\Users\Administrator\Pictures\A3.PNG)
+
+### Derivative DTW ($DD_{DTW}$ ) [14]
+Gorecki and Luczak [14] describe an approach for using a weighted combination of raw series and first-order differences for NN classification with either the Euclidean distance or full-window DTW. They find the DTW distance between two series and the two differenced series. These two distances are then combined using a weighting parameter 汐 (See Algorithm 4). Parameter 汐 is found during training through a leave-one-out cross-validation on the training data. This search is relatively efficient as different parameter values can be assessed using pre-computed distances.
+
+![](C:\Users\Administrator\Pictures\A4.PNG)
+
+An optimisation to reduce the search space of possible parameter values is proposed in [14]. However, we could not recreate their results using this optimisation. We found that if we searched through all values of 汐 in the range of [0,1] in increments of 0.01, we were able to recreate the results exactly. Testing is then performed with a 1-NN classifier using the combined distance function given in Algorithm 4.
+
+### Derivative Transform Distance ($DTD_C$ ) [15]
+Gorecki and Luczak proposed an extension of $DD_{DTW}$ that uses DTW in conjunction with transforms and derivatives [15]. they propose and evaluate combining $DD_{DTW}$ with distances on date transformed with the sin, cosine and Hilbert transform. We implement the cosine version (see Algorithm 5),where operation cosine transforms a series *a* into series *c* using the formula
+$$ c_i=\sum_{j=1}^{m} a_jcos(\frac{\prod }{2}(j-1/2)(i-1)) \quad i=1,...,m $$
+$DD_{DTW}$ was evaluated on single train test splits of 20 UCR datasets, $CID_{DTW}$ on 43 datasets and $DTD_C$ on 47. We can recreate results that are not significantly different to those published for all three algorithms.  
+All papers claim superiority to DTW. The small sample size for $DD_{DTW}$ makes this claim debatable, but the published results for $CID_{DTW}$ and $DTD_C$ are both significantly better than DTW. On published results, $DTD_C$ is significantly more accurate than $CID_{DTW}$ and $CID_{DTW}$ is significantly better than $DD_{DTW}$ . We can reproduce results not significantly different to those published for $DD_{DTW}$ , $CID_{DTW}$ and $DTD_C$ .
+
+![](C:\Users\Administrator\Pictures\A5.PNG)
+
+## Dictionary Based Classifiers
+Dictionary based approaches approximate and reduce the dimensionality of series by transforming them into representative words, then basing similarity on comparing the distribution of words. The core process of dictionary approaches involves forming words by passing a sliding window, length w, over each series, approximating each window to produce l values, and then discretising these values by assigning each a symbol from an alphabet of size 汐.  
+
+### Bag of Patterns (BOP) [23]
+BOP is a dictionary classifier built on the Symbolic Aggregate Approximation (SAX) method for converting series to strings [22]. SAX reduces the dimension of a series through Piecewise Aggregate Approximation (PAA) [8], then discretises the (normalised) series into bins formed from equal probability areas of the Normal distribution.  
+
+BOP works by applying SAX to each window to form a word. If consecutive windows produce identical words, then only the first of that run is recorded. This is included to avoid over counting trivial matches. The distribution of words over a series forms a count histogram.  
+
+To classify new samples, the same transform is applied to the new series and the nearest neighbour within the training matrix found.  
+
+BOP sets the three parameters through cross validation. Classification of new samples is by a 1-NN with Euclidean distance between histograms as the distance measure. 
+
+![](C:\Users\Administrator\Pictures\A6.PNG)
+
+### Symbolic Aggregate Approximation - Vector Space Model (SAXVSM) [31]
+SAXVSM combines the SAX representation used in BOP with the vector space model commonly used in Information Retrieval. The key differences between BOP and SAXVSM is that SAXVSM forms word distributions over classes rather than series and weights these by the term frequency/inverse document frequency (tf ﹞idf). For SAXVSM, term frequency tf refers to the number of times a word appears in a class and document frequency df means the number of classes a word appears in. tf ﹞ idf is then defined as follows.
+
+$$
+tfidf(tf,df) = \left\{\begin{matrix}
+log(1+tf)\cdot log(\frac{c}{df}) &,if\ df>0\\ 
+0 & ,otherwise 
+\end{matrix}\right.
+$$
+where c is the number of classes. SAXVSM is described formally in Algorithm 7.
+
+![](C:\Users\Administrator\Pictures\A7.PNG) 
+
+Parameters l, 汐 and w are set through cross validation on the training data. Predictions are made using a 1-NN classification based on the word frequency distribution of the new case and the tf ﹞ idf vectors of each class. The Cosine similarity measure is used.
+
+### Bag of SFA Symbols (BOSS) [30]
+BOSS also uses windows to form words over series, but it has several major differences to BOP and SAXVSM. Primary amongst these is that BOSS uses a truncated Discrete Fourier Transform (DFT) instead of a PAA on each window. Another difference is that the truncated series is discretised through a technique called Multiple Coefficient Binning (MCB), rather than using fixed intervals. MCB finds the disretising break points as a preprocessing step by estimating the distribution of the Fourier coefficients. This is performed by segmenting the series, performing a DFT, then finding breakpoints for each coefficient so that each bin contains the same number of elements. BOSS then involves similar stages to BOP; it windows each series to form word distribution through the application of DFT and discretisation by MCB. A bespoke distance function is used for nearest neighbour classification. This non symmetrical function only includes distances between frequencies of words that actually occur within the first histogram passed as an argument. BOSS also includes a parameter that determines whether the subseries are normalised or not. 
+
+![](C:\Users\Administrator\Pictures\A8.PNG) 
+
+### DTW Features ($DTW_F$ ) [20]
+Kate [20] proposes a feature generation scheme that combines DTW distances to training cases and SAX histograms. A training set with n cases is transformed into a set with n features, where feature x ij is the full window DTW distance between case i and case j. A further n features are then created. These are the optimal window DTW distance between cases. Finally, SAX word frequency histograms are created for each instance using the BOP algorithm. These a l features are concatenated with the 2n full and optimal window DTW features. The new data set is trained with a support vector machine with a polynomial kernel with order either 1, 2 or 3, set through cross validation. DTW window size and SAX parameters are also set independently through cross validation with a 1-NN classifier. A more formal description is provided in Algorithm 9.
+
+![](C:\Users\Administrator\Pictures\A9.PNG) 
+
+### Published Results for Dictionary Based Classifiers
+BOP and SAXVSM were evaluated on the 20 and 19 UCR problems respectively. All algorithms used the standard single train/test split. BOSS presents results on an extended set of 58 data sets from a range of sources, DTW F uses 47 UCR data. On the 19 data sets they all have in common, BOP is significantly worse than BOSS and SAXVSM. There is no significant differencebetween DTWF, BOSS and SAXVSM (see Figure 1). Furthermore, there is no significant difference between BOSS and DTW F on the 44 datasets they have in common.  
+
+Our BOP and DTW F results are not significantly different to the published ones. We were unable to reproduce as accurate results as published for SAXVSM and BOSS. On examination of the implementation for SAXVSM provided online and by correspondence with the author, it appears the parameters for the published results were obtained through optimisation on the test data. This obviously introduces bias, as can be seen from the results for Beef. An error of 3.3% was reported, This is far better than any other algorithm has achieved. Our results for BOSS are on average approximately 1% worse than those published, a significant difference. Correspondence with the author and examination of the code leads us to believe this is because of a versioning problem with the code that meant the normalisation parameter was set to minimize test data error rather than train error. This would introduce significant bias.
+
+![](C:\Users\Administrator\Pictures\F1.PNG) 
+
+## Shapelet Based Classifiers
+Shapelets are time series subsequences that are discriminatory of class membership. They allow for the detection of phase-independent localised similarity between series within the same class. The original shapelets algorithm by Ye and Keogh [33] uses a shapelet as the splitting criterion for a decision tree. There have been three recent advances in using shapelets.  
+
+### Fast Shapelets (FS) [27]
+Rakthanmanon and Keogh [27] propose an extension of the decision tree shapelet approach [33, 26] that speeds up shapelet discovery. Instead of a full enumerative search at each node, the fast shapelets algorithm discretises and approximates the shapelets. Specifically, for each possible shapelet length, a dictionary of SAX words is first formed. The dimensionality of the SAX dictionary is reduced through masking randomly selected letters (random projection). Multiple random projections are performed, and a frequency count histogram is built for each class. A score for each SAX word can be calculated based on how well these frequency tables discriminate between classes. The k-best SAX words are selected then mapped back to the original shapelets, which are assessed using information gain in a way identical to that used in [33]. Algorithm 10 gives a modular overview.
+
+![](C:\Users\Administrator\Pictures\A10.PNG)
+
+### Shapelet Transform (ST) [18, 6]
+Hills et al. [18] propose a shapelet transformation that separates the shapelet discovery from the classifier by finding the top k shapelets on a single run (in contrast to the decision tree, which searches for the best shapelet at each node). The shapelets are used to transform the data, where each attribute in the new dataset represents the distance of a series to one of the shapelets. We use the most recent version of this transform [6] that balances the number of shapelets per class and evaluates each shapelet on how well it discriminates just one class.  
+
+The transform described in Algorithm 11 creates a new dataset. Following [2, 6] we construct a classifier from this dataset using a weighted ensemble of standard classifiers. We include k Nearest Neighbour (where k is set through cross validation), Naive Bayes, C4.5 decision tree, Support Vector Machines with linear and quadratic basis function kernels, Random Forest (with 500 trees), Rotation Forest (with 50 trees) and a Bayesian network. Each classifier is assigned a weight based on the cross validation training accuracy, and new data (after transformation) are classified with a weighted vote. With the exception of k-NN, we do not optimise parameter settings for these classifiers via cross validation.  
+
+![](C:\Users\Administrator\Pictures\A11.PNG)
+
+### Learned Shapelets (LS) [16]  
+Grabocka et al. [16] describe a shapelet discovery algorithm that adopts a heuristic gradient descent shapelet search procedure rather than enumeration. LS finds k shapelets that, unlike the alternatives, are not restricted to being subseries in the training data. The k shapelets are initialised through a k-means clustering of candidates from the training data. The objective function for the optimisation process is a logistic loss function (with regularization term) L based on a logistic regression model for each class. The algorithm jointly learns the weights for the regression W , and the shapelets S in a two stage iterative process to produce a final logistic regression model. 
+
+![](C:\Users\Administrator\Pictures\A12.PNG)
+
+Algorithm 12 gives a high level view of the algorithm. LS restricts the search to shapelets of length $\{L^{min} ,2L^{min} , ... ,RL^{min} \}$.  A check is performed at certain intervals as to whether divergence has occurred (line 7). This is defined as a train set error of 1 or infinite loss. The check is performed when half the number of allowed iterations is complete. This criteria meant that for some problems, LS never terminated during model selection. Hence we limited the the algorithm to a maximum of five restarts.
+
+### Published Results for Shapelet Based Classifiers 
+FS, LS and ST were evaluated on 33, 45 and 75 data sets respectively. We can reproduce results that are not significantly different to FS and ST. The published results for FS are significantly worse than those for LS and ST (see Figure 2). There is no significant difference between the LS and ST published results.  
+
+![](C:\Users\Administrator\Pictures\F2.PNG) 
+
+We can reproduce the output of the code released for LS but are unable to reproduce the actual published results. The author of LS believes the difference is caused by the fact we have not included the adaptive learning rate adjustment implemented through Adagrad. We are working with him to include this enhancement.  
+
+## Interval Based Classifiers
+A family of algorithms derive features from intervals of each series. For a series of length m, there are m(m???1)/2 possible contiguous intervals. The two key decisions about using this approach are, firstly, how to deal with the huge increase in the dimension of the feature space and secondly, what to actually do with each interval. Rodriguez et al. [29] were the first to adopt this approach and address the first issue by using only intervals of lengths equal to powers of two and the second by calculating binary features over each intervals based on threshold rules on the interval mean and standard deviation. A support vector machine is then trained on this transformed feature set. This algorithm was a precursor to three recently proposed interval based classifiers that we have implemented.  
+
+### Time Series Forest (TSF) [11]
+Deng et al. [11] overcome the problem of the huge interval feature space by employing a random forest approach, using summary statistics (mean, standard deviation and slope) of each interval as features. Each member of the ensemble is given ﹟ m intervals. A classification tree that has two bespoke characteristics is defined. Firstly, rather than evaluate all possible split points to find the best information gain, a fixed number of evaluation points is pre-defined. We assume this is an expedient to make the classifier faster, as it removes the need to sort the cases by each attribute value. Secondly, a refined splitting criteria to choose between features with equal information gain is introduced. This is defined as the distance between the splitting margin and the closest case. The intuition behind the idea is that if two splits have equal entropy gain, then the split that is furthest from the nearest case should be preferred. This measure would have no value if all possible intervals were evaluated because by definition the split points are taken as equi-distant between cases. We experimented with including these two features, but found the effect on accuracy was, if anything, negative. We found the computational overhead of evaluating all split points acceptable, hence we had no need to include the margin based tie breaker. Training a single tree involves selecting ﹟ m random intervals, generating the mean, standard deviation and slope of the random intervals then creating and training a tree on the resulting 3 ﹟ m features. Classification is by a majority vote of all the trees in the ensemble. We used the built in Weka RandomTree classifier (which is the basis for the Weka RandomForest classifier) with default parameters. This means there is no limit to the depth of the tree nor a minimum number of cases per leaf node. A more formal description is given in Algorithm 13.  
+
+![](C:\Users\Administrator\Pictures\A13.PNG)
+
+### Time Series Bag of Features (TSBF) [5]
+Time Series Bag of Features (TSBF) is an extension of TSF that has multiple stages. The first stage involves generating a subseries classification problem. The second stage forms class probability estimates for each subseries. The third stage constructs a bag of features for each original instance from these probabilities. Finally a random forest classifier is built on the bag of features representation. Algorithm 14 gives a pseudo-code overview, necessarily modularised to save space.  
+
+It can informally be summarised as follows. 
+
+**Stage 1: Generate a subseries classification problem.**  
+
+- 1. Select w subseries start and end points (line 7). These are the same for each of the full series. Then, for every series, repeat the following steps
+- 2. for each of the w subseries in the series, take v equal width intervals (line 8) and calculate the mean, standard deviation and slope (line 9).
+- 3. concatenate these features and the full subseries stats to form a new case with w ﹞ v + 3 attributes and class label of the original series (line 9).
+
+**Stage 2: Produce class probability estimates for each subseries.**  
+
+- 1. Train a random forest on the new subseries dataset W (line 10). W contains n ﹞ w cases, each with w ﹞ v + 3 attributes. The number of trees in the random forest is determined by incrementally adding trees in groups of 50 until the out of bag error stops decreasing.  
+- 2. Find the random forest out of bag estimates of the class probabilities for each subseries (line 11).  
+
+**Stage 3: Recombine class probabilities and form a bag of patterns for each series.** 
+
+- 1. Discretise the class probability estimates for each subseries into b equal width bins (line 12).
+- 2. Bag together these discretised probabilities for each original series, ignoring the last class (line 13). If there are c classes, each instance will have w﹞(c???1) attributes.
+- 3. Add on the relative frequency of each predicted class (line 13).  
+
+**Stage 4: Build the final random forest classifier (line 14).**  
+
+New cases are classified by following the same stages of transformation and internal classification. The number of subseries and the number of intervals are determined by a parameter, z. Training involves searching possible values of z for the one that minimizes the out of bag error for the final classifier. Other parameters are fixed for all experiments. These are the minimum interval length (5), the number of bins for the discretisation (10), the maximum number of trees in the forest (1000), the number of trees to add at each step (50) and the number of repetitions (10).
+
+![](C:\Users\Administrator\Pictures\A14.PNG) 
+
+### Learned Pattern Similarity (LPS) [4]
+LPS was developed by the same research group as TSF and TSBF at Arizona State University. It is also based on intervals, but the main difference is that subseries become attributes rather than cases. Like TSBF, building the final model involves first building an internal predictive model. However, LPS creates an internal regression model rather than a classification model. The internal model is designed to detect correlations between subseries, and in this sense is an approximation of an autocorellation function. LPS selects random subseries. For each location, the subseries in the original data are concatenated to form a new attribute. The internal model selects a random attribute as the response variable then constructs a regression tree. A collection of these regression trees are processed to form a new set of instances based on the counts of the number of subseries at each leaf node of each tree. Algorithm 15 describes the process.  
+
+![](C:\Users\Administrator\Pictures\A15.PNG) 
+
+Less formally, LPS can be summarised as follows: 
+
+**Stage 1: Construct an ensemble of r regression trees.**  
+
+- 1. Randomly select a segment length l
+- 2. Select s segments of length l from each series, transpose each segment, then concatenate. The gives a matrix M with l ﹞ n rows and s columns.
+- 3. Generate the difference vector for each series, transpose then concatenate. Add the new attributes to the matrix M, which now has 2s columns.
+- 4. Choose a random column from M as the response variable.
+- 5. Build a random regression tree (i.e. a tree that only considers one randomly selected attribute at each level) with maximum depth of d.  
+**Stage 2: Form a count distribution over each tree＊s leaf node.**  
+
+- 1. For each case x in the original data, get the number of rows of M that reside in each leaf node for all cases originating from x.
+- 2. Concatenate these counts to form a new instance. Thus if every tree had t terminal nodes, the new case would have r ﹞ t features. In reality, each tree will have a different number of terminal nodes.  
+
+**Classification of new cases is based on a 1-nearest neighbour classification on these concatenated leaf node counts.**  
+
+There are two versions of LPS available, both of which aim to avoid the problem of generating all possible subseries. The R and C version creates the randomly selected attribute at Stage 1 on the fly at each level of the tree. This avoids the need to generate all possible subseries, but requires a bespoke tree. The second implementation (in Matlab) fixes the number of subseries to randomly select for each tree. Experiments suggest there is little difference in accuracy between the two approaches. We adopt the latter algorithm because it allows us to use the Weka RandomRegressionTree algorithm, thus simplifying the code and reducing the likelihood of bugs.  
+
+### Published Results for Interval Based Classifiers 
+TSF and TSBF were evaluated on the original 46 UCR problems, LPS on an extended set of 75 data sets first used in [24] using the standard single train/test splits. Figure 3 shows the ranks of the published results for the problem sets they have in common. Although TSBF has the highest average rank, there is no significant difference between the classifiers at the 5% level. Pairwise comparisons yield no significant difference between the three.  
+
+All three algorithms are stochastic, and our implementations are not identical, so there are bound to be variations between our results and those found with the original software. Our implementation of TSF has higher accuracy on 21 of the 44 datasets, worse on 23. The mean difference in accuracy is less than 1%. There is no significant difference in means (at the 5% level) with a rank sum test or a binomial test.  
+
+Not all of the 75 datasets LPS used are directly comparable to those in the new archive. This is because all of the new archive have been normalised, whereas many of the data proposed in [24] are not normalised. Hence we restrict our attention to the original UCR datasets. Our LPS classifier has higher accuracy on 20 of the 44 datasets and worse on 23. The mean difference in accuracy is less than 0.02%. Our results are not significantly different to those published when tested with a rank sum test and a binomial test.
+
+![](C:\Users\Administrator\Pictures\F3.PNG) 
+
+We can reproduce results that are not significantly different to those published for TSF and LPS. Our TSBF results are significantly worse than those published. Our TSBF classifier has higher accuracy on 9 of the 44 datasets, worse on 34. The mean difference is just over 1%. There is no obvious reason for this discrepancy. TSBF is a complex algorithm, and it is possible there is a mistake in our implementation, but our best debugging efforts were not able to find one. It may be caused by a difference in the random forest implementations of R and Weka or by an alternative model selection method.
+
+## Ensemble Classifiers
+Ensembles have proved popular in recent TSC research and are highly competitive with general classification problems. TSF, TSBF and BOSS are ensembles based on the same core classifier. Other approaches, such as the ST ensemble described in Section 2.4, use different classifier components. Two other recently proposed heterogenous TSC ensembles are as follows.
+
+### Elastic Ensemble (EE) [24]
+The EE is a combination of nearest neighbour (NN) classifiers that use elastic distance measures. Lines and Bagnall [24] show that none of the individual components of EE significantly outperforms DTWCV. However, we demonstrate that by combining the predictions of 1-NN classifiers built with these distance measures and using a voting scheme that weights according to cross-validation training set accuracy, we can significantly outperform DTWCV. The 11 classifiers in EE are 1-NN with Euclidean distance (ED), full dynamic time warping (DTW), DTW with window size set through cross validation (DTWCV), derivative DTW with full window and window set through cross validation (DDTW and DDTWCV), weighted DTW (WDTW) and derivative weighted DTW (WDDTW) [19], longest common subsequence (LCSS), Edit Distance with Real Penalty (ERP), Time Warp Edit (TWE) distance [25], and the Move-Split-Merge (MSM) distance metric [32].  
+
+### Collective of Transformation Ensembles (COTE) [2]
+
+![](C:\Users\Administrator\Pictures\T1.PNG)  
+
+Bagnall et al. propose the meta ensemble COTE, a combination of classifiers in the time, autocorrelation, power spectrum and shapelet domain. The components of EE and ST are pooled with classifiers built on a version of autocorrelation transform (ACF) and power spectrum (PS) transform. EE uses the 11 classifiers described above. ACF and PS employ the same 8 classifiers used in conjunction with the shapelet transform. We use the classifier called flat-COTE in [2]. This involves pooling all 35 classifiers into a single ensemble with votes weighted by train set cross validation accuracy.  
+
+## Summary
+
+We have grouped the algorithms for clarity, but the classifications are overlapping. For example, TSBF is an interval based and ensemble based approach and LPS is based on auto-correlation. Table 1 gives the break down of algorithm verses approach.  
+
+There are many other approaches that have been proposed that we have not included due to time constraints and failure to meet our inclusion criteria. Two worthy of mention are Silva et al.＊s Recurrence Plot Compression Distance (RPCD) [9] and Fulcher and Jones＊s feature-based linear classifier (FBL) [13]. RPCD involves trsansforming each series into a 2 dimensional recurrence plot then measuring similarity based on the size of the MPEG1 encoding of the concatenation of the resulting images. We were unable to find a working Java based MPEG1 encoder, and the technique seems not to work with the MPEG4 encoders we tried. FBL involves generating a huge number of possible features which are filtered with a forward selection mechanism for a linear classifier. The technique utilises built in matlab functions to generate thousands of features. Unfortunately these functions are not readily available in Java, and we considered it infeasible to attempt such as colossal task. It is further worth noting that COTE produces significantly better results than both RPCD and FBL [2].
+
+# DATA AND EXPERIMENTAL DESIGN
+The 85 datasets are described in detail on the website [1]. The collection is varied in terms of data characteristics: the length of the series ranges from 24 (ItalyPowerDemand) to 2709 (HandOutlines); train set sizes vary from 16 to 8926; and the number of classes is between 2 and 60. The data are from a wide range of domains, with an over representation of image outline classification problems. We are introducing four new food spectra data sets Ham, Meat, Strawberry and Wine. These were all created by the Institute of Food Research, part of the Norwich Research Park, as were the three spectra data already in the UCR (Beef, Coffee and OliveOil). Table 2 gives the breakdown of number of problems per category.
+
+![](C:\Users\Administrator\Pictures\T2.PNG)
+
+We run the same 100 resample folds on each problem for every classifier. The first fold is always the original train test split. The other resamples are stratified to retain class distribution in the original data sets. These resample datasets can be exactly reproduced.  
+
+Each classifier must be evaluated 8,500 times. Model selection is repeated on every training set fold. We used the parameter values searched in the relevant publication as closely as possible. The parameter values we search are listed in Table 3. We allow each classifier a maximum 100 parameter values, each of which we assess through a cross validation on the training data. The number of cross validation folds is dependent on the algorithm. This is because the overhead of the internal cross validation differs. For the distance based measures it is as fast to do a leave-one-out cross validation as any other. For others we need a new model for each set of parameter values. This means we need to construct 850,000 models for each classifier. When we include repetitions caused by bugs, we estimate we have conducted over 30 million distinct experiments over six months.
+
+The datasets vary greatly in size. The eight largest (grouped by the working title ＆the pigs＊) are ElectricalDevices, FordA, FordB, HandOutlines, NonInvasive1, NonInvasive2, StarlightCurves
+and UWaveGestureLibraryAll. We have had to sub-sample these data sets for the model selection stages, in particular for the slower algorithms such as ST, LPS and BOSS. Full details of the sampling performed are in the code documentation.
+
+We follow the basic methodology described in [10] when testing for significant difference between classifiers. For any single problem we can compare differences between two or more classifiers over the 100 resamples using standard parametric tests (t-test for two classifiers, ANOVA for multiple classifiers) or non parametric test (binomial test or the Wilcoxon sign rank test for two classifiers, Friedman test for multiple classifiers). However, the fact we are resampling data means the observations are not independent and we should be careful interpreting to much into the results for a single problem. The real benefit of resampling is to reduce the risk of bias introduced through overfitting on a single sample. Our main focus of interest is relative performance over multiple data sets. Hence, we average accuracies over all 100 resamples, then compare classifiers by ranks using the Friedman test and a post-hoc pairwise Nemenyi test to discover where the differences lie.
+
+# RESULTS
+Due to space constraints, we present an analysis of our results rather than presenting the full data. All of our results and spreadsheets to derive the graphs are available from [1].
+
+## Benchmark Classifiers
+We believe that newly proposed algorithms should add some value in terms of accuracy or efficiency over sensible standard approaches which are generally much simpler and better understood. The most obvious starting point for any classification problem is to use a standard classifier that treats each series a vector (i.e. make no explicit use of any autocorellation structure). Some characteristics that make TSC problems hard include having few cases, long series (large number of attributes) many of which are redundant or correlated. These are problems that are well studied in machine learning and classifiers have been designed to compensate for them. TSC characteristics that will confound traditional classifiers include discriminatory features in the autocorrelation function, phase independence within a class and imbedded discriminatory subseries. However, not all problems will have this characteristic, and benchmarking against standard classifiers may give insights into the problem characteristics. We have experimented with Weka versions of C4.5 (C45), naive Bayes (NB), logistic Regression (logistic), support vector machine with linear (SVML) and quadratic kernel (SVMQ), multilayer perceptron (MLP), random forest (with 500 trees) (RandF) and rotation forest (with 50 trees) (RotF). In TSC specific research, the starting point with most investigations is 1-NN with Euclidean distance (ED). This basic classifier is a very low benchmark for comparison and is easily beaten with other standard classifiers. A more useful benchmark is 1-NN dynamic time warping with a warping window set through cross validation (DTW) [28].  
+
+RotF, RandF and DTW form a clique of classifiers better than the others. Based on these results, we select RotF and DTW as our two benchmarks classifiers. Head to head, RotF has significantly better accuracy on 43 problems, DTW on 33, and no difference on 9 data sets.
+
+![](C:\Users\Administrator\Pictures\F4.PNG)
+
+## Comparison Against Benchmark Classifiers
+Table 4 shows the summary of the pairwise results of the 19 classifiers against DTW and RotF. Nine classifiers are significantly better than both benchmarks: COTE; ST; BOSS;EE; DTW F ; TSF; TSBF; LPS; and MSM. BOP, SAXVSM and FS are all significantly worse than both the benchmarks. This reflects the published FS results, but is worse than expected for BOP and SAXVSM.
+
+![](C:\Users\Administrator\Pictures\T3.PNG)
+
+## Comparison of All TSC Algorithms
+
+![](C:\Users\Administrator\Pictures\F5.PNG)
+
+Figure 5 shows the critical difference for the nine classifiers that are significantly better than both benchmarks. The most obivous conclusion from this graph is that COTE is significantly better than the others. EE and ST are components of COTE, hence this result demonstrates the benefits of combining classifiers on alternative feature spaces. The second distinguishing feature is the good performance of BOSS, and to a lesser degree, DTW F . We discuss these results in detail below.
+
+## Results by Algorithm Type
+
+**Time Domain Distance Based Classifiers**. Of the three distance based approaches we evaluated (TWE, WDTW and MSM), MSM is the highest rank (9 th ) and is the only one significantly better than both benchmarks. WDTW (ranked 14 th ) is better than DTW but not RotF. This conclusion contradicts the results in [24] which found no difference between all the elastic algorithms and DTW. This demonstrates that whilst there is a significant improvement, the benefit is small. MSM is under 2% on average better than DTW and RotF. The average of average differences in accuracy between WDTW and DTW is only 0.2%. The fact we are resampling has allowed us to detect such as small improvement. We made no attempts to speed up the distance measures, and of all the measures used in [24], MSM and TWE were by far the slowest. These results indicate it may be worthwhile examining speed ups for MSM.
+
+**Difference Based Classifiers**. In line with published results, two of the difference based classifiers, CID DTW and DTD C are significantly better than DTW, but the mean improvement is very small (under 1%). None of the three approaches are significantly different to RotF. We believe this highlights an over-reliance on DTW as a benchmark. In line with the original description we set the CID DTW as the optimal for DTW. Setting the window to optimise the CID DTW distance instead might well improve performance.
+
+**Dictionary Based Classifiers**. The results for window based dictionary classifiers are confusing. SAXVSM and BOP are significantly worse than the benchmarks and ranked 18 th and 19 th overall respectively. This would seem to suggest there is little merit in dictionary transformations for TSC. However, the BOSS ensemble is one the most accurate classifiers we tested (ranked 3 rd ). It is significantly better than both benchmarks and is ranked third overall. The main differences between BOP and BOSS are that BOSS uses a Fourier transformation rather than PAA and employs a data driven discretisation rather than arbitrary break points in the Normal distribution. This indicates that there may be further scope for window based spectral classifiers. The use of an ensemble also significantly improves accuracy. It would be interesting to detect which difference contributes most to the improved performance of the BOSS ensemble. DTW F also did well (ranked 5 th ). Including SAX features significantly improves DTW F , so our conjecture is that the DTW features are compensating for the datasets that BOP does poorly on, whilst gaining from those it does well at. This would support the COTE argument for combining features from different representations.
+
+**Shapelet Based Classifiers**. FS is the least accurate classifier we tested and is significantly worse than the benchmarks. LS is not significantly better than either benchmark and in fact it is significantly worse than DTW. Our FS algorithm reproduces published results and we believe is faithful to the original. We have put considerable effort into debugging LS and have been in correspondence with the author. He believes the difference is caused by the fact we have not included the adaptive learning rate adjustment implemented through Adagrad. We are working with him to include this enhancement. Conversely, the ST has exceeded our expectations. It is significantly better than both benchmarks is the second most accurate classifier overall, significantly better than six of the other eight classifiers that beat both benchmarks. The changes proposed in [6] have not only made it much faster, but have also increased accuracy. Primary amongst these changes is balancing the number of shapelets per class and using a one-vs-many shapelet quality measure. However, ST is the slowest of all the algorithms we assessed and there is scope to increase the speed without compromising accuracy.
+
+**Interval Based Classifiers**. The interval based approaches, TSF, TSBF and LPS, are all significantly better than both the benchmarks. This gives clear support to the idea of interval based approaches. There is no significant difference between them. Hence, based on this evidence, we conclude there is definite value in interval based algorithms and would favour TSF for its simplicity.
+
+**Ensemble Classifiers**. The top seven classifiers are all ensembles. This is strong evidence to support the view that ensembling is one of the simplest ways of improving a classifier. It seems highly likely the other classifiers would benefit from a similar approach. One of the key ensemble design decisions is promoting diversity without compromising accuracy. TSF, TSBF and LPS do this through the standard approach of sampling the attribute space. BOSS ensembles identical classifiers with different parameter settings. ST and EE engender diversity though classifier heterogeneity. Employing different base classifiers in an ensemble is relatively unusual, and these results would suggest that it might be employed more often. COTE is significantly better than all other classifiers. It promotes diversity through employing different transformations/data representations and weighting by a training set accuracy estimate. Its simplicity is its strength. These experiments suggest COTE may be even more accurate if it were to assimilate BOSS and an interval based approach.
+
+## Results by Problem Type
+
+![](C:\Users\Administrator\Pictures\T4.PNG)
+
+Table 5 shows the performance of algorithms against problem type. The data is meant to give an indication as to which family of approaches may be best for each problem type. The sample sizes are small, so we must be careful drawing too many conclusions. However, this table does indicate how evaluation can give insights into problem domains. So, for example, Shapelets are best on 4 out of 6 of the ElectricDevice problems and 3 out of 6 ECG datasets, but only 26% of problems overall. This makes sense in terms of the applications, because the profile of electricity usage and ECG irregularity will be a subseries of the whole and largely phase independent. Vector classifiers are best on 43% of the Spectrograph data sets. COTE is the best algorithm on over 40% of the image outline problems. This suggests that there are a range of features that help classify these problems and no one representation is likely to be sufficient.
+
+# CONCLUSIONS
+The primary goal of this series of benchmark experiments is to promote reproducible research and provide a common framework for future work in this area.
+
+We view data mining as a practical area of research, and our central motivation is to find techniques that work. Received wisdom is that DTW is hard to beat. Our results confirm this to a degree (7 out of 19 algorithms fail to do so), but recent advances show it not impossible.  
+
+Overall, our results indicate that COTE is, on average, clearly superior to other published techniques. It is on average 8% more accurate than DTW. However, COTE is a starting point rather than a final solution. Firstly, the no free lunch theorem leads us to believe that no classifier will dominate all others. The research issues of most interest are what types of algorithm work best on what types of problem and can we tell a priori which algorithm will be best for a specific problem. Secondly, COTE is hugely computationally intensive. It is trivial to parallelise, but its run time complexity is bounded by the Shapelet Transform, which is O(n 2 m 4 ) and the parameter searches for the elastic distance measures, some of which are O(n 3 ). An algorithm that is faster than COTE but not significantly less accurate would be a genuine advance in the field. Finally, we are only looking at a very restricted type of problem. We have not considered multi-dimensional, streaming, windowed, long series or semi-supervised TSC, to name but a few variants. Each of these subproblems would benefit from a comprehensive experimental analysis of recently proposed techniques.
+
+We are constantly looking for new areas of application and we will include any new data sets that are donated in an ongoing evaluation. We will happily evaluate anyone else＊s algorithm if it is implemented as a WEKA classifier (with all model selection performed in the method buildClassifier) and if it is computationally feasible. If we are given permission we will release any results we can verify through the associated website.  
+
+For those looking to build a predictive model for a new problem we would recommend starting with DTW, RandF and RotF as a basic sanity check and benchmark. We have made little effort to perform model selection for the forest approaches because it is generally accepted they are robust to parameter settings, but some consideration of forest size and tree parameters may yield improvements. However, our conclusion is that using COTE will probably give you the most accurate model. If a simpler approach is needed and the discriminatory features are likely to be embedded in subseries, then we would recommend using TSF or ST if the features are in the time domain (depending on whether they are phase dependent or not) or BOSS if they are in the frequency domain. If a whole series elastic measure seems appropriate, then using EE is likely to lead to better predictions than using just DTW.
+
+Finally, we stress that accuracy is not the only consideration when assessing a TSC algorithm. Time and space efficiency are often of equal or greater concern. However, if the only metric used to support a new TSC is accuracy on these test problems, then we believe that evaluation should be transparent and comparable to the results we have made available. If a proposed algorithm is not more accurate than those we have evaluated, then some other case for the algorithm must be made.
+
+**Acknowledgment**  
+
+This work is supported by the UK Engineering and Physical Sciences Research Council (EPSRC) [grant number EP/M015087/1]. The experiments were carried out on the High Performance Computing Cluster supported by the Research and Specialist Computing Support service at the University of East Anglia. We would particularly like to thank Leo Earl for his help and forbearance with our unreasonable computing requirements.
+
+# REFERENCES
+- [1] A. Bagnall and J. Lines. The UEA tsc website.
+http://timeseriesclassification.com.
+- [2] A. Bagnall, J. Lines, J. Hills, and A. Bostrom.
+Time-series classification with COTE: The collective of
+transformation-based ensembles. IEEE Transactions on
+Knowledge and Data Engineering, 27:2522每2535, 2015.
+- [3] G. Batista, E. Keogh, O. Tataw, and V. deSouza. CID:
+an efficient complexity-invariant distance measure for
+time series. Data Mining and Knowledge Discovery,
+28(3):634每669, 2014.
+- [4] M. Baydogan and G. Runger. Time series
+representation and similarity based on local
+autopatterns. Data Mining and Knowledge Discovery,
+online first, 2015.
+- [5] M. Baydogan, G. Runger, and E. Tuv. A
+bag-of-features framework to classify time series. IEEE
+Transactions on Pattern Analysis and Machine
+Intelligence, 25(11):2796每2802, 2013.
+- [6] A. Bostrom and A. Bagnall. Binary shapelet transform
+for multiclass time series classification. In Proc.17th
+DaWaK, 2015.
+- [7] A. Bostrom, A. Bagnall, and J. Lines. The UEA tsc
+codebase.
+https://bitbucket.org/aaron_bostrom/timeseries-classification.
+- [8] K. Chakrabarti, E. Keogh, S. Mehrotra, and
+M. Pazzani. Locally adaptive dimensionality reduction
+for indexing large time series databases. ACM Trans.
+Database Syst., 27(2):188每228, 2002.
+- [9] G. Batista D. Silva, V. de Souza. Time series
+classification using compression distance of recurrence
+plots. In Proc. 13th IEEE ICDM, 2013.
+- [10] J. Dem’ sar. Statistical comparisons of classifiers over
+multiple data sets. Journal of Machine Learning
+Research, 7:1每30, 2006.
+- [11] H. Deng, G. Runger, E. Tuv, and M. Vladimir. A time
+series forest for classification and feature extraction.
+Information Sciences, 239:142每153, 2013.
+- [12] H. Ding, G. Trajcevski, P. Scheuermann, X. Wang, and
+E. Keogh. Querying and mining of time series data:
+Experimental comparison of representations and
+distance measures. In Proc. 34th VLDB, 2008.
+- [13] B. Fulcher and N. Jones. Highly comparative
+feature-based time-series classification. IEEE
+Transactions on Knowledge and Data Engineering, 26(12):3026每3037, 2014.
+- [14] T. G車recki and M. Luczak. Using derivatives in time
+series classification. Data Mining and Knowledge
+Discovery, 26(2):310每331, 2013.
+- [15] T. G車recki and M. Luczak. Non-isometric transforms in
+time series classification using DTW. Knowledge-Based
+Systems, 61:98每108, 2014.
+- [16] J. Grabocka, N. Schilling, M. Wistuba, and
+L. Schmidt-Thieme. Learning time-series shapelets. In
+Proc. 20th SIGKDD, 2014.
+- [17] M. Hall, E. Frank, G. Holmes, B. Pfahringer,
+P. Reutemann, and I. Witten. The WEKA data mining
+software: An update. SIGKDD Explorations, 11(1), 2009.
+- [18] J. Hills, J. Lines, E. Baranauskas, J. Mapp, and
+A. Bagnall. Classification of time series by shapelet
+transformation. Data Mining and Knowledge Discovery,
+28(4):851每881, 2014.
+- [19] Y. Jeong, M. Jeong, and O. Omitaomu. Weighted
+dynamic time warping for time series classification.
+Pattern Recognition, 44:2231每2240, 2011.
+- [20] R. Kate. Using dynamic time warping distances as
+features for improved time series classification. Data
+Mining and Knowledge Discovery, online first,2015.
+- [21] E. Keogh and T. Folias. The UCR time series data
+mining archive.
+http://www.cs.ucr.edu/~eamonn/time_series_data/.
+- [22] J. Lin, E. Keogh, W. Li, and S. Lonardi. Experiencing
+SAX: a novel symbolic representation of time series.
+Data Mining and Knowledge Discovery, 15(2):107每144,2007.
+- [23] J. Lin, R. Khade, and Y. Li. Rotation-invariant
+similarity in time series using bag-of-patterns
+representation. Journal of Intelligent Information
+Systems, 39(2):287每315, 2012.
+- [24] J. Lines and A. Bagnall. Time series classification with
+ensembles of elastic distance measures. Data Mining
+and Knowledge Discovery, 29:565每592, 2015.
+- [25] P. Marteau. Time warp edit distance with stiffness
+adjustment for time series matching. IEEE
+Transactions on Pattern Analysis and Machine
+Intelligence, 31(2):306每318, 2009.
+- [26] A. Mueen, E. Keogh, and N. Young. Logical-shapelets:
+An expressive primitive for time series classification. In
+Proc. 17th SIGKDD, 2011.
+- [27] T. Rakthanmanon and E. Keogh. Fast-shapelets: A
+fast algorithm for discovering robust time series
+shapelets. In Proc. 13th SDM, 2013.
+- [28] C. Ratanamahatana and E. Keogh. Three myths about
+dynamic time warping data mining. In Proc. 5th SDM, 2005.
+- [29] J. Rodr∩??guez, C. Alonso, and J. Maestro. Support
+vector machines of interval-based features for time
+series classification. Knowledge-Based Systems,
+18:171每178, 2005.
+- [30] P. Sch??fer. The BOSS is concerned with time series
+classification in the presence of noise. Data Mining and
+Knowledge Discovery, 29(6):1505每1530, 2015.
+- [31] P. Senin and S. Malinchik. SAX-VSM: interpretable
+time series classification using sax and vector space
+model. In Proc. 13th IEEE ICDM, 2013.
+- [32] A. Stefan, V. Athitsos, and G. Das. The
+Move-Split-Merge metric for time series. IEEE
+Transactions on Knowledge and Data Engineering,
+25(6):1425每1438, 2013.
+- [33] L. Ye and E. Keogh. Time series shapelets: a novel
+technique that allows accurate, interpretable and fast
+classification. Data Mining and Knowledge Discovery,
+22(1-2):149每182, 2011.

@@ -1,0 +1,568 @@
+---
+title: "TSdist"
+author: "haoyi.li"
+date: "2018年11月15日"
+output:
+  html_document:
+    df_print: kable
+    number_sections: yes
+    toc: yes
+    toc_float: yes
+---
+```{r setup, include=FALSE}
+Sys.getlocale()
+Sys.setlocale(locale="C") # 解决input string 1 is invalid in this locale的问题
+knitr::opts_chunk$set(echo = TRUE)
+library(TSdist)
+```
+
+# ACFDistance
+
+ACF：autocorrelation coefficients
+
+## 描述
+根据估计的自相关系数计算两个数值时间序列之间的差异性。
+
+## 用法
+```
+ACFDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# TSdist包自带的对象example.series3和example.series4，是长度分别为100,120的两个数值时间序列
+data(example.series3)
+data(example.series4)
+plot(example.series3, type = 'l')
+plot(example.series4, type = 'l')
+# 查看时间序列对象的信息：
+# help(example.series)
+
+# 使用默认参数计算两个时间序列的ACFDistance:
+ACFDistance(example.series3, example.series4)
+```
+
+# ARLPCCepsDistance 
+
+## 描述
+Computes the dissimilarity between two numeric time series in terms of their  Predictive Coding (LPC) ARIMA processes.
+根据线性预测编码(LPC)ARIMA过程计算两个数值时间序列之间的差异性。
+
+## 用法
+```
+ARLPCCepsDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# 使用默认参数，计算两个时间序列之间的ar.lpc.ceps距离。在这种情况下，自动为每个系列选择一个AR模型
+ARLPCCepsDistance(example.series3, example.series4)
+
+# 计算两个序列之间的ar.lpc.cep距离，并在附加参数中给出每个序列的ARIMA模型的阶数
+ARLPCCepsDistance(example.series3, example.series4, order.x=c(3,0,2),
+order.y=c(3,0,2))
+```
+
+
+# ARMahDistance 
+Maharaj提出的基于模型的差异性
+
+## 描述
+计算Maharaj提出的基于模型的差异性
+
+## 用法
+```
+ARMahDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 返回值说明
+```
+statistic: 均匀性检验的统计量
+p-value: 均匀性检验得出的p值。
+```
+
+## 示例
+```{r}
+# 使用默认参数计算两个时间序列之间的ar.mah距离
+ARMahDistance(example.series3, example.series4)
+```
+
+
+# ARPicDistance
+Piccolo(1990)提出的基于模型的差异性
+
+## 描述
+计算Piccolo提出的基于模型的差异性
+
+## 用法
+```
+ARPicDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# 使用默认参数，计算两个时间序列之间的picolo距离。在这种情况下，自动为每个系列选择一个AR模型
+ARPicDistance(example.series3, example.series4)
+
+# 计算两个序列之间的Picolo距离，并在附加参数中给出每个序列的ARIMA模型的阶数
+ARPicDistance(example.series3, example.series4, order.x=c(3,0,2),
+order.y=c(3,0,2))
+```
+
+
+# CCorDistance
+Cross-correlation based distance.基于交叉相关（互相关）的距离
+
+## 描述
+计算两个时间序列之间的基于交叉相关（互相关）的距离
+
+## 用法
+```
+CCorDistance(x, y, lag.max=(min(length(x), length(y))-1))
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+lag.max：正整数，定义最大的延迟期数，默认值default=min(length(x), length(y))-1
+```
+
+## 示例
+```{r}
+# 计算基于cross-correlation的距离
+# 使用默认的lag.max：
+CCorDistance(example.series3, example.series4)
+
+# 设置lag.max=50：
+CCorDistance(example.series3, example.series4, lag.max=50)
+```
+
+
+# CDMDistance 
+Compression-based Dissimilarity measure
+基于压缩的差异性度量
+
+## 描述
+Computes the dissimilarity between two numeric series based on their size after compression
+计算两个时间序列之间的基于压缩的差异性
+
+## 用法
+```
+CDMDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# 使用默认参数计算
+CDMDistance(example.series3, example.series4)
+```
+
+
+# CIDDistance
+Complexity-Invariant Distance Measure For Time Series
+时间序列的复杂度不变距离度量
+
+## 描述
+基于复杂度估计的欧氏距离修正，计算两个等长的时间序列的差异性
+
+## 用法
+```
+CIDDistance(x, y)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+```
+
+## 示例
+```{r}
+CIDDistance(example.series1, example.series2)
+```
+
+
+# CorDistance
+基于Pearson相关性的差异性
+
+## 描述
+Computes two different distance measure based on Pearson’s correlation between a pair of numeric time series of the same length.
+计算两个等长时间序列的pearson相关性距离
+
+## 用法
+```
+CorDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+data(example.series1)
+data(example.series2)
+# Calculate the first correlation based distance between the series.
+CorDistance(example.series1, example.series2)
+# Calculate the second correlation based distance between the series
+# by specifying \eqn{beta}.
+CorDistance(example.series1, example.series2, beta=2)
+```
+
+
+# CortDistance 
+Dissimilarity Index Combining Temporal Correlation and Raw Value Behaviors
+时间相关性与原始数值行为相结合的不同指标
+
+## 描述
+Computes the dissimilarity between two numeric series of the same length by combining the dissimilarity between the raw values and the dissimilarity between the temporal correlation behavior of the series.
+计算两个等长时间序列的差异性，通过合并原始数据之间的差异性和序列的时间相关行为的差异性
+
+## 用法
+```
+CortDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the first correlation based distance between the series using the default parameters.
+CortDistance(example.series1, example.series2)
+```
+
+
+# DissimDistance 
+The Dissim distance is calculated.
+计算离散距离。
+
+## 描述
+Computes the Dissim distance between a pair of numeric series.
+计算一对数字序列之间的dissim距离。
+
+## 用法
+```
+DissimDistance(x, y, tx, ty)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+tx：如果不是常数，则表示指定系列x的抽样索引的数值向量。
+ty：如果不是常数，则表示指定系列y的抽样索引的数值向量。
+```
+
+## 示例
+```{r}
+#假设均匀抽样计算离散距离:
+DissimDistance(example.series1, example.series2)
+
+#在不均匀采样条件下计算离散距离:
+tx<-unique(c(seq(2, 175, 2), seq(7, 175, 7)))
+tx <- tx[order(tx)]
+ty <- tx
+DissimDistance(example.series1, example.series2, tx, ty)
+```
+
+
+# DTWDistance  
+Dynamic Time Warping distance
+动态时间规整距离
+
+## 描述
+计算两个数值时间序列之间的动态时间规整距离
+
+## 用法
+```
+DTWDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# Calculate the basic DTW distance for two series of different length.
+# 计算两个不等长序列的基本DTW距离
+DTWDistance(example.series3, example.series4)
+
+# 通过设置sakoechiba窗口大小为30，计算两个不等长序列的DTW距离
+DTWDistance(example.series3, example.series4, window.type="sakoechiba", window.size=30)
+
+# Calculate the DTW distance for two series of different length
+# with an assymetric step pattern
+# 通过设置step.pattern为asymmetric，计算两个不等长序列的DTW距离
+DTWDistance(example.series3, example.series4, step.pattern=asymmetric)
+```
+
+
+# EDRDistance  
+Edit Distance for Real Sequences (EDR)
+真实序列的编辑距离(EDR)
+
+## 描述
+计算两个数值时间序列的编辑距离
+
+## 用法
+```
+EDRDistance(x, y, epsilon, sigma)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+epsilon：定义距离的正阈值
+sigma：必要时，可以通过指定一个正整数来添加sako-chiba窗口大小，|length(x) ??? length(y)| < sigma
+```
+
+## 示例
+```{r}
+# 计算两个不等长的时间序列的EDR距离，不带窗口约束
+EDRDistance(example.series3, example.series4, epsilon=0.1)
+
+# 计算两个不等长的时间序列的EDR距离，窗口约束为30
+EDRDistance(example.series3, example.series4, epsilon=0.1, sigma=30)
+```
+
+
+# ERPDistance  
+Edit Distance with Real Penalty (ERP).
+用实数惩罚(ERP)编辑距离
+
+## 描述
+计算一对数值时间序列的实数惩罚编辑距离
+
+## 用法
+```
+ERPDistance(x, y, g, sigma)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+g：用于惩罚差距的参考值
+sigma：必要时，可以通过指定一个正整数来添加sako-chiba窗口大小
+```
+
+## 示例
+```{r}
+# 计算两个不等长的时间序列的EDR距离，不设窗口约束
+ERPDistance(example.series3, example.series4, g=0)
+
+# 计算两个不等长的时间序列的EDR距离，设置窗口约束为30
+ERPDistance(example.series3, example.series4, g=0, sigma=30)
+```
+
+
+# EuclideanDistance
+欧几里得距离，欧氏距离
+
+## 描述
+计算一对数值时间序列的欧氏距离
+
+## 用法
+```
+EuclideanDistance(x, y)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+```
+
+## 示例
+```{r}
+EuclideanDistance(example.series1, example.series2)
+```
+
+
+# FourierDistance
+
+基于傅里叶系数的距离
+
+## 描述
+基于离散傅里叶变换，计算一对数值时间序列之间的距离。
+
+## 用法
+```
+FourierDistance(x, y, n = (floor(length(x) / 2) + 1))
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+n：表示要考虑的傅里叶系数的正整数，默认值default=(floor(length(x) / 2) + 1)
+```
+
+## 示例
+```{r}
+# 使用默认参数计算基于傅里叶变换系数的距离：
+FourierDistance(example.series1, example.series2)
+
+# 仅使用前20个傅里叶系数，计算基于傅里叶变换系数的距离：
+FourierDistance(example.series1, example.series2, n=20)
+```
+
+
+# FrechetDistance 
+Frechet距离
+
+## 描述
+Computes the Frechet distance between two numerical trajectories.
+计算两个数值轨迹之间的Frechet距离
+
+## 用法
+```
+FrechetDistance(x, y, tx, ty, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+tx：如果不是常数，则表示指定系列x的抽样索引的数字向量。
+ty：如果不是常数，则表示指定系列y的抽样索引的数字向量。
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# 计算基于小波特征提取的时间序列之间的距离。
+# FrechetDistance(example.series3, example.series4)
+```
+
+
+# InfNormDistance 
+无限范数距离
+
+## 描述
+计算一对数值向量之间的无限范数距离
+
+## 用法
+```
+InfNormDistance(x, y)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+```
+
+## 示例
+```{r}
+InfNormDistance(example.series1, example.series2)
+```
+
+
+# IntPerDistance 
+Integrated Periodogram based dissimilarity
+基于集成周期图的差异性
+
+## 描述
+基于集成周期图，计算两个等长的数值时间序列的差异性
+
+## 用法
+```
+IntPerDistance(x, y, ...)
+```
+
+## 参数说明
+```
+x：第一个数值时间序列
+y：第二个数值时间序列
+...：其他附加参数
+```
+
+## 示例
+```{r}
+IntPerDistance(example.series1, example.series2)
+```
+
+
+# KMedoids 
+使用选定的距离度量对时间序列数据库进行K个medoid聚类
+
+## 描述
+Given a specific distance measure and a time series database, this function provides the K-medoids clustering result. Furthermore, if the ground truth clustering is provided, and the associated F-value is also provided.
+给定一个指定的距离度量和一个时间序列数据集，这函数提供k-medoids聚类结果。同时，如果提供了真相聚类，也并给出相关的f-值。
+
+## 用法
+```
+KMedoids(data, k, ground.truth, distance, ...)
+```
+
+## 参数说明
+```
+data：时间序列数据库，数值矩阵，列表，mts对象，zoo或xts对象
+k：整数值，表示集群的数量
+ground.truth：表示数据库真实聚类的数值向量。
+distance：使用的距离测量
+...：其他附加参数
+```
+
+## 示例
+```{r}
+# The example.database3 synthetic database is loaded
+data(example.database3)
+tsdata <- example.database3[[1]]
+groundt <- example.database3[[2]]
+# Apply K-medoids clusterning for different distance measures
+KMedoids(data=tsdata, ground.truth=groundt, k=5, "euclidean")
+KMedoids(data=tsdata, ground.truth=groundt, k=5, "cid")
+KMedoids(data=tsdata, ground.truth=groundt, k=5, "pdc")
+```
+
